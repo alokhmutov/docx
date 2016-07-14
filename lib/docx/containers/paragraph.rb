@@ -1,4 +1,5 @@
 require 'docx/containers/text_run'
+require 'docx/containers/hyperlink'
 require 'docx/containers/container'
 
 module Docx
@@ -11,8 +12,7 @@ module Docx
         def self.tag
           'p'
         end
-
-
+        
         # Child elements: pPr, r, fldSimple, hlink, subDoc
         # http://msdn.microsoft.com/en-us/library/office/ee364458(v=office.11).aspx
         def initialize(node, document_properties = {})
@@ -44,7 +44,7 @@ module Docx
         # Return paragraph as a <p></p> HTML fragment with formatting based on properties.
         def to_html
           html = ''
-          text_runs.each do |text_run|
+          text_runs_with_hyperlinks.each do |text_run|
             html << text_run.to_html
           end
           styles = { 'font-size' => "#{font_size}pt" }
@@ -52,10 +52,20 @@ module Docx
           html_tag(:p, content: html, styles: styles)
         end
 
-
         # Array of text runs contained within paragraph
         def text_runs
           @node.xpath('w:r|w:hyperlink/w:r').map { |r_node| Containers::TextRun.new(r_node, @document_properties) }
+        end
+
+        # Array of text runs or hyperlinks contained within paragraph
+        def text_runs_with_hyperlinks
+          @node.xpath('w:r|w:hyperlink').map do |r_node| 
+            if 'hyperlink' == r_node.name
+              Containers::Hyperlink.new(r_node,@document_properties)
+            else
+              Containers::TextRun.new(r_node, @document_properties)
+            end
+          end
         end
 
         # Iterate over each text run within a paragraph
@@ -78,6 +88,11 @@ module Docx
         def font_size
           size_tag = @node.xpath('w:pPr//w:sz').first
           size_tag ? size_tag.attributes['val'].value.to_i / 2 : @font_size
+        end
+        
+        def style
+          style_tag = @node.xpath('w:pPr//w:pStyle').first
+          style_tag ? style_tag.attributes['val'].value.to_s : 'Normal'
         end
         
         alias_method :text, :to_s
