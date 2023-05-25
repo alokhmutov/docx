@@ -190,7 +190,7 @@ module Docx
     def load_footnotes
       puts "loading!"
       footnotes_entry = @zip.glob('word/footnotes.xml').first
-
+      return if footnotes_entry.nil?
       @footnotes_xml = footnotes_entry.get_input_stream.read
       @footnotes = Nokogiri::XML(@footnotes_xml)
     rescue Errno::ENOENT => e
